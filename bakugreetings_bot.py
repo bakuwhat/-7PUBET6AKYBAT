@@ -401,6 +401,32 @@ class GreetingBot:
         
         application.run_polling(allowed_updates=Update.ALL_TYPES)
 
+# В конец файла, перед if __name__ == '__main__':
+import os
+from flask import Flask
+import threading
+
+# Создаем веб-сервер для Render (требуется для бесплатного тарифа)
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+
+if __name__ == '__main__':
+    BOT_TOKEN = os.environ.get('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
+    
+    # Запускаем Flask в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    
+    # Запускаем бота
+    bot = GreetingBot()
+    bot.run(BOT_TOKEN)
 
 if __name__ == '__main__':
     # Замените на токен вашего бота
