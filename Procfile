@@ -1,0 +1,1 @@
+worker: python bakugreetings_bot.py
