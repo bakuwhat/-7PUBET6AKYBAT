@@ -4,19 +4,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 import sqlite3
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import os
-import sys
-
-# Для PythonAnywhere
-if 'PYTHONANYWHERE_DOMAIN' in os.environ:
-    # Создаем лог-файл
-    import logging
-    logging.basicConfig(
-        filename='/home/yourusername/bot.log',
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO
-    )
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    MessageHandler, 
+    filters, 
+    ContextTypes
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -46,7 +40,6 @@ class GreetingDatabase:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
-            # Таблица приветствий
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS greetings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +51,6 @@ class GreetingDatabase:
                 )
             ''')
             
-            # Индексы для быстрого поиска
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_user_timestamp 
                 ON greetings(user_id, timestamp)
@@ -162,9 +154,8 @@ class GreetingBot:
     
     def __init__(self, db_path: str = "greetings.db"):
         self.db = GreetingDatabase(db_path)
-        # Исправленное регулярное выражение
         self.pattern = re.compile(r'^/7PUBET(\S*)$', re.IGNORECASE)
-        self.last_greetings = {}  # Для анти-спама
+        self.last_greetings = {}
     
     def extract_greeting(self, text: str) -> Optional[str]:
         """Извлечь цель приветствия из сообщения"""
@@ -225,7 +216,6 @@ class GreetingBot:
         """Статистика за день"""
         chat_id = update.effective_chat.id
         period_start = datetime.now() - timedelta(days=1)
-        
         stats = self.db.get_stats_by_period(chat_id, period_start)
         await self._send_stats(update, stats, "📊 Статистика приветов за день:")
     
@@ -233,7 +223,6 @@ class GreetingBot:
         """Статистика за неделю"""
         chat_id = update.effective_chat.id
         period_start = datetime.now() - timedelta(weeks=1)
-        
         stats = self.db.get_stats_by_period(chat_id, period_start)
         await self._send_stats(update, stats, "📊 Статистика приветов за неделю:")
     
@@ -241,7 +230,6 @@ class GreetingBot:
         """Статистика за месяц"""
         chat_id = update.effective_chat.id
         period_start = datetime.now() - timedelta(days=30)
-        
         stats = self.db.get_stats_by_period(chat_id, period_start)
         await self._send_stats(update, stats, "📊 Статистика приветов за месяц:")
     
@@ -249,7 +237,6 @@ class GreetingBot:
         """Статистика за всё время"""
         chat_id = update.effective_chat.id
         period_start = datetime(2020, 1, 1)
-        
         stats = self.db.get_stats_by_period(chat_id, period_start)
         await self._send_stats(update, stats, "📊 Общая статистика приветов:")
     
@@ -267,7 +254,6 @@ class GreetingBot:
         target_username = context.args[0].replace('@', '')
         target_user = None
         
-        # Ищем пользователя в базе
         with sqlite3.connect(self.db.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -306,7 +292,6 @@ class GreetingBot:
     async def stats_names(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Статистика популярных имен/целей приветствий"""
         chat_id = update.effective_chat.id
-        
         popular_targets = self.db.get_popular_targets(chat_id)
         
         if not popular_targets:
@@ -339,7 +324,6 @@ class GreetingBot:
             message += f"{medal} @{username}: {count} приветов ({percentage:.1f}%)\n"
         
         message += f"\n📈 Всего приветов: {total}"
-        
         await update.message.reply_text(message)
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -350,7 +334,7 @@ class GreetingBot:
 **Как использовать:**
 Отправьте сообщение, начинающееся с `/7PUBET` (регистр не важен):
 • `/7PUBET` - поприветствовать всех
-• `/7PUBETИмя` - поприветствовать конкретного человека
+• `/7PUBETИмя` - поприветствовать конкретного человека/предмет
 
 **Команды статистики:**
 • `/stats_day` - статистика за день
@@ -360,14 +344,20 @@ class GreetingBot:
 • `/stats_user @username` - статистика пользователя
 • `/stats_names` - популярные цели приветствий
 • `/help` - это сообщение
+
+**Примеры:**
+`/7PUBET` - просто привет
+`/7PUBETВася` - привет Васе
+`/7PUBET6AKYBAT` - привет бакубату 😄
 """
         await update.message.reply_text(help_text)
     
     def run(self, token: str):
         """Запуск бота"""
+        # В версии 21.x Application.builder() работает немного иначе
         application = Application.builder().token(token).build()
         
-        # Регистрируем обработчики команд статистики
+        # Регистрируем обработчики команд
         application.add_handler(CommandHandler("stats_day", self.stats_day))
         application.add_handler(CommandHandler("stats_week", self.stats_week))
         application.add_handler(CommandHandler("stats_month", self.stats_month))
@@ -377,16 +367,15 @@ class GreetingBot:
         application.add_handler(CommandHandler("help", self.help_command))
         application.add_handler(CommandHandler("start", self.help_command))
         
-        # Исправленный обработчик для сообщений с /7PUBET
-        # Используем filters.Regex с одним аргументом
-        greeting_filter = filters.Regex(re.compile(r'^/7PUBET', re.IGNORECASE))
-        application.add_handler(MessageHandler(greeting_filter, self.handle_message))
+        # Создаем кастомный фильтр для сообщений /7PUBET
+        class GreetingFilter(filters.MessageFilter):
+            def filter(self, message):
+                if message.text:
+                    return bool(re.match(r'^/7PUBET', message.text, re.IGNORECASE))
+                return False
         
-        # Обработчик для всех остальных текстовых сообщений (не команд)
-        application.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND & ~greeting_filter, 
-            self.handle_message
-        ))
+        # Добавляем обработчик для приветствий
+        application.add_handler(MessageHandler(GreetingFilter(), self.handle_message))
         
         print("🤖 Бот для подсчёта приветствий запущен!")
         print("📋 Доступные команды:")
@@ -401,36 +390,12 @@ class GreetingBot:
         
         application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-# В конец файла, перед if __name__ == '__main__':
-import os
-from flask import Flask
-import threading
-
-# Создаем веб-сервер для Render (требуется для бесплатного тарифа)
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is running!"
-
-def run_flask():
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
-    BOT_TOKEN = os.environ.get('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
+    import os
     
-    # Запускаем Flask в отдельном потоке
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
-    
-    # Запускаем бота
-    bot = GreetingBot()
-    bot.run(BOT_TOKEN)
-
-if __name__ == '__main__':
-    # Замените на токен вашего бота
-    BOT_TOKEN = "8701010609:AAFF4Ju4znaBvGki7HoItqPd55H8AE_wSVY"
+    # Получаем токен из переменных окружения или используем значение по умолчанию
+    BOT_TOKEN = os.environ.get('BOT_TOKEN', '8701010609:AAFF4Ju4znaBvGki7HoItqPd55H8AE_wSVY')
     
     bot = GreetingBot()
     bot.run(BOT_TOKEN)
