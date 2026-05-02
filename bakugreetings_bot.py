@@ -515,7 +515,7 @@ if __name__ == "__main__":
     import os
     import sys
 
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", "8701010609:AAFF4Ju4znaBvGki7HoItqPd55H8AE_wSVY")
 
     # ID чата (замените на реальный ID вашего чата)
     CHAT_ID = -1002611211879  # <-- ОБЯЗАТЕЛЬНО ЗАМЕНИТЕ на ID вашего чата!
